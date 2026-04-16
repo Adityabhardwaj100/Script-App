@@ -19,7 +19,11 @@ const Interactions = {
       sb.classList.toggle('collapsed');
       btn.classList.toggle('active');
     });
-    document.getElementById('total-timer')?.addEventListener('click', () => UI.toggleOverview());
+    document.getElementById('total-timer')?.addEventListener('click', () => {
+      if (!UI.scriptId) return;
+      UI.isOverviewMode = !UI.isOverviewMode;
+      UI._timeline();
+    });
   },
 
 
@@ -33,8 +37,11 @@ const Interactions = {
         if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')    { e.preventDefault(); UI.recPrev(); }
         if (e.key === 'Escape') UI.exitRec();
       }
-      const oview = document.getElementById('overview-mode');
-      if (oview && !oview.classList.contains('hidden') && e.key === 'Escape') UI.closeOverview();
+      const oview = document.getElementById('overview-view');
+      if (oview && !oview.classList.contains('hidden') && e.key === 'Escape') {
+        UI.isOverviewMode = false;
+        UI._timeline();
+      }
     });
   },
 
@@ -91,23 +98,36 @@ const Interactions = {
     const relX = e.clientX - trackRect.left + d.track.scrollLeft - d.offsetX;
     d.col.style.transform = `translateX(${relX - d.col.offsetLeft}px)`;
 
-    /* Compute new index */
+    /* Compute which slot to insert into (ignoring the dragged col itself) */
     const siblings = d.cols.filter(c => c !== d.col);
-    let newIdx = siblings.length;
+    let newIdx = siblings.length; // default: end
     for (let i = 0; i < siblings.length; i++) {
       const r = siblings[i].getBoundingClientRect();
       if (e.clientX < r.left + r.width * 0.5) { newIdx = i; break; }
     }
-    /* Adjust for original position */
-    const insertIdx = d.fromIdx <= newIdx ? newIdx : newIdx;
-    if (insertIdx !== d.toIdx) {
-      d.toIdx = insertIdx;
+
+    /* Map sibling-space index back to full-list index */
+    // When dragging right: the items that shift are those between fromIdx+1 and newIdx (inclusive)
+    // insertIdx in full list = newIdx if dragging left, newIdx+1 if dragging right
+    const insertIdx = d.fromIdx <= newIdx ? newIdx + 1 : newIdx;
+    // But we store as index-in-siblings for display, and pass full-list idx on drop
+    d.toSibIdx = newIdx;
+    d.toIdx    = d.fromIdx <= newIdx ? newIdx + 1 : newIdx; // final position in original list
+
+    if (insertIdx !== d._lastInsertIdx) {
+      d._lastInsertIdx = insertIdx;
       const colW = d.col.offsetWidth;
-      siblings.forEach((c, i) => {
-        const shift = (d.fromIdx > d.toIdx ? i >= d.toIdx && i < d.fromIdx : i >= d.fromIdx && i <= d.toIdx - 1)
-          ? (d.fromIdx > d.toIdx ? colW : -colW) : 0;
-        c.style.transition = 'transform 220ms cubic-bezier(0.4,0,0.2,1)';
-        c.style.transform = `translateX(${shift}px)`;
+      siblings.forEach((c, sibI) => {
+        let shift = 0;
+        if (d.fromIdx < insertIdx) {
+          // dragging right: shift items between fromIdx and newIdx leftward
+          if (sibI >= d.fromIdx && sibI < newIdx) shift = -colW;
+        } else {
+          // dragging left: shift items between newIdx and fromIdx rightward
+          if (sibI >= newIdx && sibI < d.fromIdx) shift = colW;
+        }
+        c.style.transition = 'transform 200ms cubic-bezier(0.4,0,0.2,1)';
+        c.style.transform  = `translateX(${shift}px)`;
       });
     }
   },
@@ -119,14 +139,15 @@ const Interactions = {
 
     if (d.active) {
       d.col.classList.remove('dragging');
-      d.col.style.position = '';
-      d.col.style.zIndex = '';
+      d.col.style.position  = '';
+      d.col.style.zIndex    = '';
       d.col.style.transform = '';
       d.cols.filter(c => c !== d.col).forEach(c => { c.style.transition = ''; c.style.transform = ''; });
 
-      if (d.toIdx !== d.fromIdx) {
-        State.moveScene(d.sceneId, d.toIdx);
-        UI.renderTimeline();
+      const finalIdx = d.toIdx ?? d.fromIdx;
+      if (finalIdx !== d.fromIdx) {
+        State.moveScene(d.sceneId, finalIdx);
+        UI._timeline();
       }
     }
     this.drag = null;

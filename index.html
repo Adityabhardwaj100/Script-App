@@ -115,33 +115,23 @@
         <p class="empty-sub">or create a new project to begin</p>
       </div>
 
-      <!-- Recording / Teleprompter mode -->
+      <!-- Recording / Presentation mode -->
       <div id="recording-mode" class="recording-mode hidden">
-        <div class="rec-header">
-          <span class="rec-label">RECORD MODE</span>
+        <div class="rec-topbar">
+          <span class="rec-label">LOCK MODE</span>
           <div class="rec-nav">
-            <button id="rec-prev" class="rec-nav-btn">←</button>
+            <button id="rec-prev" class="rec-nav-btn" title="Previous scene">&#8592;</button>
             <span id="rec-counter" class="rec-counter">1 / 1</span>
-            <button id="rec-next" class="rec-nav-btn">→</button>
+            <button id="rec-next" class="rec-nav-btn" title="Next scene">&#8594;</button>
           </div>
           <button id="rec-exit" class="rec-exit-btn">Exit</button>
         </div>
-        <div class="rec-body">
-          <div class="rec-scene-num" id="rec-scene-num">1</div>
-          <div class="rec-narration" id="rec-narration"></div>
-          <div class="rec-onscreen" id="rec-onscreen"></div>
+        <div class="rec-canvas">
+          <div id="rec-track" class="rec-track"></div>
         </div>
-        <div class="rec-progress" id="rec-progress"></div>
       </div>
 
-      <!-- Overview mode -->
-      <div id="overview-mode" class="overview-mode hidden">
-        <div class="overview-header">
-          <span>OVERVIEW</span>
-          <button id="overview-close">✕</button>
-        </div>
-        <div id="overview-track" class="overview-track"></div>
-      </div>
+
 
     </main>
   </div>

@@ -176,6 +176,11 @@ const UI = {
   _updateTimer() {
     const el = this.$('total-time'); if (!el) return;
     el.textContent = this.scriptId ? this.fmt(State.totalDuration(this.scriptId)) : '0:00';
+    const timer = this.$('total-timer');
+    if (timer) {
+      if (this.isOverviewMode) timer.classList.add('overview-active');
+      else timer.classList.remove('overview-active');
+    }
   },
 
   _updateVtitle() {
@@ -235,15 +240,19 @@ const UI = {
 
   /* ── Overview Map View ── */
   _renderOverview() {
-    const track = this.$('overview-track');
-    track.innerHTML = '';
+    const container = this.$('overview-view');
+    if (!container) return;
+    container.innerHTML = '';
+
     const scenes = State.scenes(this.scriptId);
 
+    // Scrollable body holding all columns
+    const body = document.createElement('div');
+    body.className = 'ov-body';
+
     scenes.forEach((sc, i) => {
-      const avgWpm = 150;
-      const wCount = (sc.versions[0]?.text || '').split(/\s+/).filter(w => w.length).length;
-      let est = sc.actualDuration;
-      if (!est) est = Math.ceil((wCount / avgWpm) * 60);
+      const av = sc.versions.find(v => v.active) || sc.versions[0];
+      const dur = sc.actualDuration || State.estimatedDuration(av?.text || '') || 0;
 
       const col = document.createElement('div');
       col.className = 'ov-col';
@@ -253,57 +262,54 @@ const UI = {
         this._timeline();
         setTimeout(() => {
           const domCol = document.querySelector(`.scene-col[data-id="${sc.id}"]`);
-          if (domCol) domCol.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+          if (domCol) domCol.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }, 100);
       });
 
-      // Large Number
+      // Large scene number
       const numEl = document.createElement('div');
       numEl.className = 'ov-num';
       numEl.textContent = i + 1;
 
-      // Pipeline Box
-      const timeWrap = document.createElement('div');
-      timeWrap.className = 'ov-time-wrapper';
-      const timeBox = document.createElement('div');
-      timeBox.className = 'ov-time';
-      timeBox.textContent = est || '00';
-      timeWrap.appendChild(timeBox);
+      // Pipeline time row
+      const timeRow = document.createElement('div');
+      timeRow.className = 'ov-time-row';
+      const timePill = document.createElement('div');
+      timePill.className = 'ov-time-pill';
+      timePill.textContent = dur ? this.fmt(dur) : '—';
+      timeRow.appendChild(timePill);
 
-      // Topic
-      const topicCt = document.createElement('div');
-      topicCt.className = 'ov-topic-container';
+      // Rotated topic title
+      const topicArea = document.createElement('div');
+      topicArea.className = 'ov-topic-area';
       const topicEl = document.createElement('div');
       topicEl.className = 'ov-topic';
-      // Fallback topic if untitled
-      const titleText = sc.title && sc.title.trim() !== '' ? sc.title : (sc.versions[0]?.text || '').substring(0, 20).toUpperCase();
-      topicEl.textContent = titleText || 'UNTITLED';
-      topicCt.appendChild(topicEl);
+      topicEl.textContent = sc.title && sc.title.trim() ? sc.title : 'UNTITLED';
+      topicArea.appendChild(topicEl);
 
-      // Dots container at bottom
-      const dotsEl = document.createElement('div');
-      dotsEl.className = 'ov-dots';
-      const maxSlots = Math.max(5, (sc.onscreen || []).length);
-      for (let j = 0; j < maxSlots; j++) {
+      // Onscreen completion dots at bottom
+      const dotsArea = document.createElement('div');
+      dotsArea.className = 'ov-dots-area';
+      const dotCount = Math.max(3, (sc.onscreen || []).length);
+      for (let j = 0; j < dotCount; j++) {
         const dot = document.createElement('div');
         dot.className = 'ov-dot';
-        if (sc.onscreen && sc.onscreen[j] && sc.onscreen[j].done) {
+        if (sc.onscreen && sc.onscreen[j] && sc.onscreen[j].checked) {
           dot.classList.add('filled');
-        } else if (!sc.onscreen || !sc.onscreen[j]) {
-          // If purely empty padding slot, keep an empty border dot or hide?
-          // The reference has empty dots extending to the bottom natively.
-          dot.classList.add('empty');
         }
-        dotsEl.appendChild(dot);
+        dotsArea.appendChild(dot);
       }
 
       col.appendChild(numEl);
-      col.appendChild(timeWrap);
-      col.appendChild(topicCt);
-      col.appendChild(dotsEl);
-      track.appendChild(col);
+      col.appendChild(timeRow);
+      col.appendChild(topicArea);
+      col.appendChild(dotsArea);
+      body.appendChild(col);
     });
+
+    container.appendChild(body);
   },
+
 
   _insertBtn(afterOrderIndex) {
     const btn = document.createElement('button');
@@ -674,68 +680,159 @@ const UI = {
     }
   },
 
-  /* ═══════════════════════════════════════
-     OVERVIEW MODE
-  ═══════════════════════════════════════ */
-  toggleOverview() {
-    const ov = this.$('overview-mode');
-    if (ov.classList.contains('hidden')) this._openOverview();
-    else this.closeOverview();
-  },
-  closeOverview() { this.$('overview-mode')?.classList.add('hidden'); },
-  _openOverview() {
-    if (!this.scriptId) return;
-    const scenes = State.scenes(this.scriptId);
-    const track = this.$('overview-track');
-    if (!track) return;
-    track.innerHTML = '';
-    scenes.forEach((sc, i) => {
-      const av = sc.versions.find(v => v.active) || sc.versions[0];
-      const col = document.createElement('div');
-      col.className = 'overview-col';
-      col.innerHTML = `
-        <div class="overview-num">${i+1}</div>
-        <div class="overview-dur">${this.fmt(sc.actualDuration)}</div>
-        <div class="overview-title">${sc.title}</div>
-        <div class="overview-dots">${sc.onscreen.slice(0,4).map(()=>'<div class="overview-ydot"></div>').join('')}</div>`;
-      col.addEventListener('click', () => {
-        this.closeOverview();
-        document.querySelector(`.scene-col[data-id="${sc.id}"]`)?.scrollIntoView({ behavior:'smooth', inline:'center', block:'nearest' });
-      });
-      track.appendChild(col);
-    });
-    this.$('overview-mode').classList.remove('hidden');
-    this.$('overview-close').addEventListener('click', () => this.closeOverview(), { once:true });
-  },
+
 
   /* ═══════════════════════════════════════
-     RECORDING MODE (Teleprompter)
+     RECORDING MODE (Dark Timeline)
   ═══════════════════════════════════════ */
   _enterRec(startIdx = 0) {
     if (!this.scriptId) return;
     this.recIdx = startIdx;
     this.$('recording-mode').classList.remove('hidden');
-    this._renderRecScene();
+    this._buildRecTrack();
+    this._scrollRecToScene(this.recIdx);
+
     this.$('rec-prev').onclick = () => this.recPrev();
     this.$('rec-next').onclick = () => this.recNext();
-    this.$('rec-exit').onclick = () => this.exitRec();
+    this.$('rec-exit').onclick  = () => this.exitRec();
+
+    // Keyboard nav
+    this._recKeyHandler = (e) => {
+      if (e.key === 'ArrowLeft')  this.recPrev();
+      if (e.key === 'ArrowRight') this.recNext();
+      if (e.key === 'Escape')     this.exitRec();
+    };
+    document.addEventListener('keydown', this._recKeyHandler);
   },
-  exitRec() { this.$('recording-mode').classList.add('hidden'); },
-  recNext() { const s = State.scenes(this.scriptId); if (this.recIdx < s.length-1) { this.recIdx++; this._renderRecScene(); } },
-  recPrev() { if (this.recIdx > 0) { this.recIdx--; this._renderRecScene(); } },
-  _renderRecScene() {
+
+  exitRec() {
+    this.$('recording-mode').classList.add('hidden');
+    if (this._recKeyHandler) {
+      document.removeEventListener('keydown', this._recKeyHandler);
+      this._recKeyHandler = null;
+    }
+  },
+
+  recNext() {
     const scenes = State.scenes(this.scriptId);
-    const sc = scenes[this.recIdx]; if (!sc) return;
-    const av = sc.versions.find(v => v.active) || sc.versions[0];
-    this.$('rec-scene-num').textContent = this.recIdx + 1;
-    this.$('rec-counter').textContent = `${this.recIdx+1} / ${scenes.length}`;
-    this.$('rec-narration').textContent = av?.text || '';
-    this.$('rec-onscreen').innerHTML = sc.onscreen.length
-      ? `<div class="rec-onscreen-label">ON-SCREEN</div>` +
-        sc.onscreen.map(o => `<div class="rec-onscreen-item"><span class="rec-onscreen-dot"></span>${o.text}</div>`).join('')
-      : '';
-    this.$('rec-progress').innerHTML = scenes.map((_,i) => `<div class="rec-dot${i===this.recIdx?' active':''}"></div>`).join('');
+    if (this.recIdx < scenes.length - 1) {
+      this.recIdx++;
+      this._scrollRecToScene(this.recIdx);
+    }
   },
+
+  recPrev() {
+    if (this.recIdx > 0) {
+      this.recIdx--;
+      this._scrollRecToScene(this.recIdx);
+    }
+  },
+
+  /* Build all scene columns for the dark timeline */
+  _buildRecTrack() {
+    const track = this.$('rec-track');
+    if (!track) return;
+    track.innerHTML = '';
+
+    const scenes = State.scenes(this.scriptId);
+    const total  = scenes.length;
+
+    scenes.forEach((sc, i) => {
+      const av  = sc.versions.find(v => v.active) || sc.versions[0];
+      const est = State.estimatedDuration(av?.text || '');
+
+      const col = document.createElement('div');
+      col.className = 'rec-col';
+      col.dataset.recIdx = i;
+
+      /* Header row: number + lock icon */
+      col.innerHTML = `
+        <div class="rc-header">
+          <span class="rc-num">${i + 1}</span>
+          <div class="rc-header-right">
+            <svg class="rc-lock-icon" width="13" height="14" viewBox="0 0 13 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+              <rect x="2" y="6" width="9" height="7" rx="1.5"/>
+              <path d="M4 6V4a2.5 2.5 0 015 0v2"/>
+            </svg>
+          </div>
+        </div>
+        <div class="rc-dur-row">
+          <span class="rc-dur-actual">${sc.actualDuration}</span>
+          <span class="rc-dur-est">${est}</span>
+        </div>
+        <div class="rc-title">${sc.title || 'UNTITLED'}</div>
+        <div class="rc-narration">${av?.text || ''}</div>`;
+
+      /* ON-SCREEN section */
+      if (sc.onscreen && sc.onscreen.length) {
+        const onDiv = document.createElement('div');
+        onDiv.className = 'rc-section';
+        onDiv.innerHTML = `<div class="rc-section-label">ON-SCREEN</div>`;
+        sc.onscreen.forEach(item => {
+          const row = document.createElement('div');
+          row.className = 'rc-onscreen-item' + (item.checked ? ' checked' : '');
+          row.innerHTML = `<span class="rc-check-dot${item.checked ? ' filled' : ''}"></span><span>${item.text}</span>`;
+          onDiv.appendChild(row);
+        });
+        col.appendChild(onDiv);
+      }
+
+      /* REFERENCES section */
+      if (sc.refs && sc.refs.length) {
+        const refDiv = document.createElement('div');
+        refDiv.className = 'rc-section';
+        refDiv.innerHTML = `<div class="rc-section-label">REFERENCES</div>`;
+        sc.refs.forEach(ref => {
+          const chip = document.createElement('div');
+          chip.className = 'rc-ref-chip';
+          chip.textContent = ref.text || ref.url || 'Reference';
+          if (ref.url) {
+            chip.style.cursor = 'pointer';
+            chip.title = ref.url;
+          }
+          refDiv.appendChild(chip);
+        });
+        col.appendChild(refDiv);
+      }
+
+      /* Click to navigate to that scene */
+      col.addEventListener('click', () => {
+        this.recIdx = i;
+        this._scrollRecToScene(i);
+      });
+
+      track.appendChild(col);
+    });
+
+    this._updateRecCounter();
+  },
+
+  _scrollRecToScene(idx) {
+    const track  = this.$('rec-track');
+    if (!track) return;
+
+    // Update active highlight
+    track.querySelectorAll('.rec-col').forEach((col, i) => {
+      col.classList.toggle('rec-col-active', i === idx);
+    });
+
+    // Smooth scroll the active column into view
+    const activeCol = track.querySelector(`.rec-col[data-rec-idx="${idx}"]`);
+    if (activeCol) {
+      activeCol.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+    }
+
+    this.recIdx = idx;
+    this._updateRecCounter();
+  },
+
+  _updateRecCounter() {
+    const scenes = State.scenes(this.scriptId);
+    const el = this.$('rec-counter');
+    if (el) el.textContent = `${this.recIdx + 1} / ${scenes.length}`;
+  },
+
+
 
   /* ═══════════════════════════════════════
      MODALS
@@ -949,12 +1046,6 @@ const UI = {
   /* ── Global buttons ── */
   _globalBtns() {
     document.querySelector('#modal-youtube .modal-cancel')?.addEventListener('click', () => this._closeModals());
-
-    this.$('total-timer')?.addEventListener('click', () => {
-      if (!this.scriptId) return;
-      this.isOverviewMode = !this.isOverviewMode;
-      this._timeline();
-    });
 
     /* ── Pencil / Rail dropdown menu ── */
     const menuBtn  = this.$('btn-rail-menu');
