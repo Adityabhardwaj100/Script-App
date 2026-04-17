@@ -17,6 +17,7 @@ export default function Sidebar({
   scriptId,
   isOverviewMode,
   collapsed,
+  userEmail,
   onToggleCollapsed,
   onToggleOverview,
   onSelectScript,
@@ -26,6 +27,7 @@ export default function Sidebar({
   onRefresh,
   onToast,
   onConfirm,
+  onLogout,
 }) {
   const dragPidRef = useRef(null);
 
@@ -127,6 +129,24 @@ export default function Sidebar({
               <path d="M9 1.5v2M9 14.5v2M1.5 9h2M14.5 9h2M3.7 3.7l1.4 1.4M12.9 12.9l1.4 1.4M3.7 14.3l1.4-1.4M12.9 5.1l1.4-1.4" strokeLinecap="round"/>
             </svg>
           </button>
+
+          {/* User pill */}
+          {userEmail && (
+            <div className="sb-user">
+              <span className="sb-user-email" title={userEmail}>{userEmail}</span>
+              <button
+                className="sb-logout-btn"
+                title="Sign out"
+                onClick={onLogout}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                  <path d="M9 2h3a1 1 0 011 1v8a1 1 0 01-1 1H9"/>
+                  <path d="M6 10l3-3-3-3"/>
+                  <line x1="9" y1="7" x2="1" y2="7"/>
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
