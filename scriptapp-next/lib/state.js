@@ -1,12 +1,11 @@
-/* ─── app.js — State & Data Layer ─── */
+/* ─── lib/state.js — State & Data Layer ─── */
 
 const STORAGE_KEY = 'scriptapp_v2';
-const WPM = 150;
+export const WPM = 150;
 
 function uid() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
 function now() { return Date.now(); }
 
-/* ── Seed data matching reference screenshots ── */
 const SEED = {
   projects: [
     { id: 'p1', title: 'HK IN 5 HOURS',  status: 'in-progress', createdAt: now() },
@@ -60,18 +59,20 @@ const SEED = {
   settings: { apiKey:'', activeScriptId:'sc1', activeProjectId:'p1' }
 };
 
-/* ── State singleton ── */
-const State = {
+export const State = {
   d: null,
 
   init() {
+    if (typeof window === 'undefined') return;
     try { this.d = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch(_) {}
     if (!this.d) this.d = JSON.parse(JSON.stringify(SEED));
     if (!this.d.settings) this.d.settings = { apiKey:'', activeScriptId:null, activeProjectId:null };
     this._save();
   },
 
-  _save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(this.d)); },
+  _save() {
+    if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY, JSON.stringify(this.d));
+  },
 
   /* Projects */
   projects()          { return this.d.projects; },
@@ -180,7 +181,7 @@ const State = {
     }, 0);
   },
 
-  /* Onscreen checkist */
+  /* Onscreen */
   addOnscreen(sceneId, text='') {
     const sc = this.scene(sceneId); if (!sc) return;
     const item = { id:uid(), text, checked:false };
@@ -201,12 +202,16 @@ const State = {
     const ref = { id:uid(), text, url };
     this.updateScene(sceneId, { refs:[...sc.refs, ref] }); return ref;
   },
+  updateRef(sceneId, refId, up) {
+    const sc = this.scene(sceneId); if (!sc) return;
+    this.updateScene(sceneId, { refs: sc.refs.map(r => r.id === refId ? {...r,...up} : r) });
+  },
   deleteRef(sceneId, refId) {
     const sc = this.scene(sceneId); if (!sc) return;
     this.updateScene(sceneId, { refs: sc.refs.filter(r => r.id !== refId) });
   },
 
   /* Settings */
-  get(key)       { return this.d.settings?.[key]; },
+  get(key)       { return this.d?.settings?.[key]; },
   set(key, val)  { if (!this.d.settings) this.d.settings={}; this.d.settings[key]=val; this._save(); },
 };

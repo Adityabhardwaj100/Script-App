@@ -1,8 +1,9 @@
-/* ─── ai.js — Gemini API Integration ─── */
+/* ─── lib/ai.js — Gemini API Integration ─── */
+import { State } from './state.js';
 
-const AI_WPM = 150; // local constant (same value as WPM in app.js)
+const AI_WPM = 150;
 
-const AI = {
+export const AI = {
   key() { return State.get('apiKey') || ''; },
 
   async call(prompt) {
