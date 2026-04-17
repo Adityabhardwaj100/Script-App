@@ -936,6 +936,57 @@ textarea { resize: none; }
 .modal-input:focus { border-color: var(--text); }
 .modal-label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; color: var(--text-muted); display: block; margin-bottom: 6px; }
 .modal-hint { font-size: 11px; color: var(--text-muted); margin-top: 8px; line-height: 1.5; }
+/* Settings account row */
+.settings-account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--col-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 4px;
+}
+.settings-account-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.settings-account-icon {
+  flex-shrink: 0;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: rgba(240,165,0,0.12);
+  color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+}
+.settings-account-email {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.settings-signout-btn {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border: 1px solid var(--col-border);
+  border-radius: 5px;
+  padding: 5px 10px;
+  transition: color 150ms, border-color 150ms, background 150ms;
+  white-space: nowrap;
+}
+.settings-signout-btn:hover {
+  color: #e53e3e;
+  border-color: #ffc9c9;
+  background: #fff5f5;
+}
+
 .settings-danger { margin-top: 4px; }
 .settings-danger-rule { height: 1px; background: #f0e0e0; margin: 16px 0 12px; }
 .settings-danger-label { font-size: 9px; font-weight: 700; letter-spacing: 0.15em; color: #e53e3e; margin-bottom: 10px; text-transform: uppercase; }

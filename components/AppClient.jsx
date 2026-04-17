@@ -304,6 +304,8 @@ export default function AppClient() {
           onRefresh={refresh}
           onSelectScript={selectScript}
           onToast={showToast}
+          onLogout={handleLogout}
+          userEmail={user?.email}
         />
       )}
 

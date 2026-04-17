@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { State } from '../lib/state.js';
 import { AI } from '../lib/ai.js';
 
-export default function Modals({ modal, onClose, onRefresh, onSelectScript, onToast }) {
+export default function Modals({ modal, onClose, onRefresh, onSelectScript, onToast, onLogout, userEmail }) {
   /* local inputs */
   const [projectTitle, setProjectTitle] = useState('');
   const [scriptTitle, setScriptTitle]   = useState('');
@@ -212,7 +212,30 @@ export default function Modals({ modal, onClose, onRefresh, onSelectScript, onTo
       {modal.type === 'settings' && (
         <div className="modal" id="modal-settings">
           <h3>Settings</h3>
-          <label className="modal-label">Gemini API Key</label>
+
+          {/* Account row */}
+          {userEmail && (
+            <div className="settings-account">
+              <div className="settings-account-info">
+                <div className="settings-account-icon">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <circle cx="7" cy="5" r="2.5"/>
+                    <path d="M1.5 12.5c0-2.5 2.5-4.5 5.5-4.5s5.5 2 5.5 4.5"/>
+                  </svg>
+                </div>
+                <span className="settings-account-email">{userEmail}</span>
+              </div>
+              <button
+                className="settings-signout-btn"
+                id="btn-signout"
+                onClick={() => { onClose(); onLogout?.(); }}
+              >
+                Sign out
+              </button>
+            </div>
+          )}
+
+          <label className="modal-label" style={{ marginTop: userEmail ? 16 : 0 }}>Gemini API Key</label>
           <input
             id="inp-api-key"
             className="modal-input"
