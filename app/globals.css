@@ -86,7 +86,7 @@ textarea { resize: none; }
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.2em;
-  color: var(--sidebar-accent);
+  color: rgba(255,255,255,0.6);
   text-transform: uppercase;
   margin: 28px 0 10px;
 }
@@ -427,8 +427,22 @@ textarea { resize: none; }
   transition: color 150ms, background 150ms;
   flex-shrink: 0;
 }
-.col-action-btn:hover { color: var(--text); }
-.col-action-btn.btn-delete:hover { color: #e53e3e; }
+.col-action-btn:hover        { color: var(--text); }
+.btn-delete:hover            { color: #e53e3e; }
+/* Lock button — turns amber when scene is locked */
+.btn-lock.locked             { color: var(--accent); }
+.btn-lock.locked:hover       { color: #e53e3e; }
+/* Locked scene: faint banner at top of header */
+.col-header.is-locked::after {
+  content: 'LOCKED';
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--accent);
+  position: absolute;
+  top: 6px;
+  left: 20px;
+}
 .col-action-btn.btn-ai:hover { color: var(--accent); }
 .col-action-btn.btn-yt:hover { color: #ff0000; }
 .col-action-btn.btn-lock.locked { color: var(--accent); }
@@ -672,49 +686,60 @@ textarea { resize: none; }
 .ref-chip:hover .ref-del { opacity: 1; }
 .ref-del:hover { color: #e53e3e; }
 
-/* Insert scene button */
+/* Insert scene button — 16px hover area, visually zero gap via negative margins */
 .insert-btn {
-  width: 28px;
+  width: 16px;
+  margin: 0 -8px;     /* pulls back into both scenes — no visual gap */
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
   position: relative;
-  opacity: 0;
-  transition: opacity 200ms;
-  cursor: pointer;
+  overflow: visible;
+  background: none;
   border: none;
+  cursor: pointer;
   min-height: 100vh;
+  z-index: 10;
 }
-.insert-btn:hover { opacity: 1; }
-.timeline-track:hover .insert-btn { opacity: 0.4; }
-.timeline-track:hover .insert-btn:hover { opacity: 1; }
+/* Centered line — gray at rest, turns amber on hover */
 .insert-line {
   position: absolute;
-  top: 0; bottom: 0;
+  top: 0;
+  bottom: 0;
   left: 50%;
+  transform: translateX(-50%);
   width: 1px;
-  background: var(--accent);
-  opacity: 0;
-  transition: opacity 200ms;
+  background: var(--col-border);
+  transition: background 180ms, width 180ms;
   pointer-events: none;
 }
-.insert-btn:hover .insert-line { opacity: 1; }
+.insert-btn:hover .insert-line {
+  background: var(--accent);
+  width: 2px;
+}
+/* Plus circle — hidden, pops into view on hover */
 .insert-plus {
-  width: 22px; height: 22px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.7);
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: var(--accent);
   color: #000;
   font-size: 16px;
   font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-  position: relative;
-  z-index: 1;
-  transition: transform 200ms var(--transition-spring);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 180ms, transform 200ms var(--transition-spring);
+  pointer-events: none;
   line-height: 1;
 }
-.insert-btn:hover .insert-plus { transform: scale(1.2); }
+.insert-btn:hover .insert-plus {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
 
 /* ── EMPTY STATE ── */
 .empty-state {

@@ -8,6 +8,8 @@ export default function Modals({ modal, onClose, onRefresh, onSelectScript, onTo
   const [projectTitle, setProjectTitle] = useState('');
   const [scriptTitle, setScriptTitle]   = useState('');
   const [apiKey, setApiKey]             = useState('');
+  const [wisprKey, setWisprKey]         = useState('');
+  const [claudeKey, setClaudeKey]       = useState('');
   const [refText, setRefText]           = useState('');
   const [refUrl, setRefUrl]             = useState('');
   const [ytData, setYtData]             = useState(null);
@@ -31,6 +33,8 @@ export default function Modals({ modal, onClose, onRefresh, onSelectScript, onTo
     }
     if (modal.type === 'settings') {
       setApiKey(State.get('apiKey') || '');
+      setWisprKey(State.get('wisprKey') || '');
+      setClaudeKey(State.get('claudeKey') || '');
     }
     if (modal.type === 'ref') {
       const { sceneId, refId } = modal.context || {};
@@ -84,9 +88,11 @@ export default function Modals({ modal, onClose, onRefresh, onSelectScript, onTo
   };
 
   const handleSaveSettings = () => {
-    State.set('apiKey', apiKey.trim());
+    State.set('apiKey',    apiKey.trim());
+    State.set('wisprKey',  wisprKey.trim());
+    State.set('claudeKey', claudeKey.trim());
     onClose();
-    onToast('API key saved');
+    onToast('Settings saved');
   };
 
   const handleDeleteScript = () => {
@@ -245,7 +251,31 @@ export default function Modals({ modal, onClose, onRefresh, onSelectScript, onTo
             value={apiKey}
             onChange={e => setApiKey(e.target.value)}
           />
-          <p className="modal-hint">Stored locally. Powers AI Polish and YouTube Assets.</p>
+          <p className="modal-hint">Powers AI Polish (Gemini).</p>
+
+          <label className="modal-label" style={{ marginTop: 14 }}>Claude API Key</label>
+          <input
+            id="inp-claude-key"
+            className="modal-input"
+            placeholder="sk-ant-…"
+            type="password"
+            autoComplete="off"
+            value={claudeKey}
+            onChange={e => setClaudeKey(e.target.value)}
+          />
+          <p className="modal-hint">Powers ‘Generate narration’ (the ○ button on each scene).</p>
+
+          <label className="modal-label" style={{ marginTop: 14 }}>Wispr Flow API Key</label>
+          <input
+            id="inp-wispr-key"
+            className="modal-input"
+            placeholder="wispr_…"
+            type="password"
+            autoComplete="off"
+            value={wisprKey}
+            onChange={e => setWisprKey(e.target.value)}
+          />
+          <p className="modal-hint">Powers the 🎤 mic button for speech-to-text on each scene.</p>
           <div className="modal-footer">
             <button className="btn-cancel" onClick={onClose}>Cancel</button>
             <button className="btn-confirm" id="btn-save-settings" onClick={handleSaveSettings}>

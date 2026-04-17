@@ -57,7 +57,6 @@ export default function TimelineView({
             >
               <span className="insert-line" />
               <span className="insert-plus">+</span>
-              <span className="insert-line" />
             </button>
           </span>
         ))}

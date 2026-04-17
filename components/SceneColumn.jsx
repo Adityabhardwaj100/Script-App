@@ -64,25 +64,28 @@ function VersionControls({ sceneId, onVersionChange }) {
 }
 
 /* ── OnScreen Item ── */
-function OnscreenItem({ sceneId, item, onDelete }) {
+function OnscreenItem({ sceneId, item, onDelete, locked }) {
   const [checked, setChecked] = useState(item.checked);
   const [text, setText]       = useState(item.text);
 
   const handleCheck = (e) => {
+    if (locked) return;
     setChecked(e.target.checked);
     State.updateOnscreen(sceneId, item.id, { checked: e.target.checked });
   };
   const handleText = (e) => {
+    if (locked) return;
     setText(e.target.value);
     State.updateOnscreen(sceneId, item.id, { text: e.target.value });
   };
 
   return (
-    <li className="onscreen-item">
+    <li className="onscreen-item" style={locked ? { opacity: 0.55 } : {}}>
       <input
         type="checkbox"
         className="onscreen-check"
         checked={checked}
+        disabled={locked}
         onChange={handleCheck}
       />
       <input
@@ -90,9 +93,11 @@ function OnscreenItem({ sceneId, item, onDelete }) {
         className="onscreen-input"
         value={text}
         placeholder="On-screen text…"
+        readOnly={locked}
+        style={locked ? { cursor: 'not-allowed' } : {}}
         onChange={handleText}
       />
-      <button className="onscreen-del" onClick={onDelete}>✕</button>
+      <button className="onscreen-del" disabled={locked} onClick={onDelete}>✕</button>
     </li>
   );
 }
@@ -190,7 +195,7 @@ export default function SceneColumn({
     if (timerEl) timerEl.textContent = fmt(State.totalDuration(scriptId));
   };
 
-  /* ── Column drag-reorder ── */
+  /* ── Column drag-reorder (SWAP only — no other scenes move) ── */
   useEffect(() => {
     const col    = colRef.current;
     const handle = col?.querySelector('.drag-handle');
@@ -198,18 +203,18 @@ export default function SceneColumn({
 
     const onPointerDown = (e) => {
       e.preventDefault();
-      const track    = document.getElementById('timeline-track');
+      const track = document.getElementById('timeline-track');
       if (!track) return;
-      const colRect  = col.getBoundingClientRect();
-      const cols     = [...track.querySelectorAll('.scene-col')];
+      const colRect = col.getBoundingClientRect();
+      const cols    = [...track.querySelectorAll('.scene-col')];
 
       dragRef.current = {
         sceneId, col, track, cols,
         startX:  e.clientX,
         offsetX: e.clientX - colRect.left,
         fromIdx: cols.indexOf(col),
-        toIdx:   cols.indexOf(col),
         active:  false,
+        swapTarget: null,   /* the sibling currently being hovered over */
       };
 
       col.setPointerCapture(e.pointerId);
@@ -229,34 +234,36 @@ export default function SceneColumn({
       }
       if (!d.active) return;
 
+      /* Move the grabbed column with the pointer */
       const trackRect = d.track.getBoundingClientRect();
       const relX = e.clientX - trackRect.left + d.track.scrollLeft - d.offsetX;
       d.col.style.transform = `translateX(${relX - d.col.offsetLeft}px)`;
 
+      /* Find which sibling the cursor is primarily over */
       const siblings = d.cols.filter(c => c !== d.col);
-      let newIdx = siblings.length;
-      for (let i = 0; i < siblings.length; i++) {
-        const r = siblings[i].getBoundingClientRect();
-        if (e.clientX < r.left + r.width * 0.5) { newIdx = i; break; }
+      let over = null;
+      for (const sib of siblings) {
+        const r = sib.getBoundingClientRect();
+        if (e.clientX >= r.left && e.clientX <= r.right) { over = sib; break; }
       }
 
-      const insertIdx  = d.fromIdx <= newIdx ? newIdx + 1 : newIdx;
-      d.toSibIdx = newIdx;
-      d.toIdx    = d.fromIdx <= newIdx ? newIdx + 1 : newIdx;
-
-      if (insertIdx !== d._lastInsertIdx) {
-        d._lastInsertIdx = insertIdx;
-        const colW = d.col.offsetWidth;
-        siblings.forEach((c, sibI) => {
-          let shift = 0;
-          if (d.fromIdx < insertIdx) {
-            if (sibI >= d.fromIdx && sibI < newIdx) shift = -colW;
-          } else {
-            if (sibI >= newIdx && sibI < d.fromIdx) shift = colW;
-          }
-          c.style.transition = 'transform 200ms cubic-bezier(0.4,0,0.2,1)';
-          c.style.transform  = `translateX(${shift}px)`;
-        });
+      /* Highlight only the swap-target sibling, reset all others */
+      if (over !== d.swapTarget) {
+        /* Reset previous target */
+        if (d.swapTarget) {
+          d.swapTarget.style.transition = '';
+          d.swapTarget.style.transform  = '';
+          d.swapTarget.classList.remove('swap-target');
+        }
+        d.swapTarget = over;
+        /* Nudge new target slightly to show swap intention */
+        if (over) {
+          const colW  = d.col.offsetWidth;
+          const nudge = d.fromIdx < d.cols.indexOf(over) ? -colW * 0.12 : colW * 0.12;
+          over.style.transition = 'transform 180ms ease';
+          over.style.transform  = `translateX(${nudge}px)`;
+          over.classList.add('swap-target');
+        }
       }
     };
 
@@ -266,6 +273,7 @@ export default function SceneColumn({
       col.removeEventListener('pointerup',   onPointerUp);
 
       if (d.active) {
+        /* Reset all visual states */
         d.col.classList.remove('dragging');
         d.col.style.position  = '';
         d.col.style.zIndex    = '';
@@ -273,10 +281,13 @@ export default function SceneColumn({
         d.cols.filter(c => c !== d.col).forEach(c => {
           c.style.transition = '';
           c.style.transform  = '';
+          c.classList.remove('swap-target');
         });
-        const finalIdx = d.toIdx ?? d.fromIdx;
-        if (finalIdx !== d.fromIdx) {
-          State.moveScene(d.sceneId, finalIdx);
+
+        /* SWAP only the two scenes — nothing else moves */
+        const targetId = d.swapTarget?.dataset?.id;
+        if (targetId && targetId !== d.sceneId) {
+          State.swapScenes(d.sceneId, targetId);
           onRefresh();
         }
       }
@@ -286,6 +297,7 @@ export default function SceneColumn({
     handle.addEventListener('pointerdown', onPointerDown);
     return () => handle.removeEventListener('pointerdown', onPointerDown);
   }, [sceneId, onRefresh]);
+
 
   /* ── AI Polish ── */
   const handleAiPolish = async () => {
@@ -308,8 +320,19 @@ export default function SceneColumn({
   };
 
   /* ── Delete scene ── */
-  const handleDelete = () => {
-    onDelete(sceneId);
+  const handleDelete = () => { onDelete(sceneId); };
+
+  /* ── Mic — Wispr Flow speech-to-text ── */
+  const handleMic = () => {
+    const key = State.get('wisprKey');
+    if (!key) { onToast('Add Wispr Flow API key in Settings first'); return; }
+    onToast('Wispr Flow recording — coming soon!');
+  };
+
+  /* ── Toggle per-scene lock ── */
+  const handleToggleLock = () => {
+    State.updateScene(sceneId, { locked: !sc.locked });
+    localRefresh();
   };
 
   /* ── Onscreen items state (local) ── */
@@ -350,10 +373,11 @@ export default function SceneColumn({
       <div className="col-header">
         <span className="scene-num">{index + 1}</span>
         <div className="col-actions">
+
+          {/* 1. Delete scene */}
           <button
             className="col-action-btn btn-delete"
             title="Delete scene"
-            data-id={sceneId}
             onClick={handleDelete}
           >
             <svg width="13" height="14" viewBox="0 0 13 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
@@ -361,12 +385,26 @@ export default function SceneColumn({
             </svg>
           </button>
 
+          {/* 2. Mic — Wispr Flow speech-to-text */}
+          <button
+            className="col-action-btn btn-mic"
+            title="Record narration (Wispr Flow)"
+            disabled={sc.locked}
+            onClick={handleMic}
+          >
+            <svg width="13" height="14" viewBox="0 0 13 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <rect x="4" y="1" width="5" height="7" rx="2.5"/>
+              <path d="M2 7a4.5 4.5 0 009 0"/>
+              <line x1="6.5" y1="11.5" x2="6.5" y2="13"/>
+            </svg>
+          </button>
+
+          {/* 3. Generate narration — Claude AI, outputs to separate version */}
           <button
             className="col-action-btn btn-ai"
-            title="Generate narration for this scene"
-            data-id={sceneId}
+            title="Generate narration (adds AI version — keeps your original)"
+            disabled={isPolishing || sc.locked}
             onClick={handleAiPolish}
-            disabled={isPolishing}
             style={isPolishing ? { color: '#f0a500' } : {}}
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -374,32 +412,30 @@ export default function SceneColumn({
             </svg>
           </button>
 
-          <button
-            className="col-action-btn btn-yt"
-            title="Generate YouTube assets for this script"
-            data-id={sceneId}
-            onClick={() => onShowYTModal(scriptId)}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M2 3.5l7.5 3.5L2 10.5V3.5z" strokeLinejoin="round"/><path d="M12 2v10"/>
-            </svg>
-          </button>
-
-          {/* Drag handle */}
+          {/* 4. Drag handle — reorder scenes */}
           <div className="drag-handle" title="Drag to reorder">
             {Array(6).fill(0).map((_, i) => <div key={i} className="drag-handle-dot" />)}
           </div>
 
+          {/* 5. Lock this scene only */}
           <button
-            className="col-action-btn btn-lock"
-            title="Enter recording mode"
-            data-id={sceneId}
-            onClick={() => onEnterRec(index)}
+            className={`col-action-btn btn-lock${sc.locked ? ' locked' : ''}`}
+            title={sc.locked ? 'Unlock scene' : 'Lock scene (disable editing)'}
+            onClick={handleToggleLock}
           >
-            <svg width="13" height="14" viewBox="0 0 13 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <rect x="2" y="6" width="9" height="7" rx="1.5"/>
-              <path d="M4 6V4a2.5 2.5 0 015 0v2"/>
-            </svg>
+            {sc.locked ? (
+              /* Closed lock */
+              <svg width="13" height="14" viewBox="0 0 13 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                <rect x="2" y="6" width="9" height="7" rx="1.5"/>
+                <path d="M4 6V4a2.5 2.5 0 015 0v2"/>
+              </svg>
+            ) : (
+              /* Open lock */
+              <svg width="13" height="14" viewBox="0 0 13 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                <rect x="2" y="6" width="9" height="7" rx="1.5"/>
+                <path d="M4 6V4a2.5 2.5 0 015 0"/>
+              </svg>
+            )}
           </button>
         </div>
       </div>
@@ -428,7 +464,9 @@ export default function SceneColumn({
           className="col-title"
           defaultValue={sc.title}
           placeholder="SCENE TITLE"
-          onChange={e => State.updateScene(sceneId, { title: e.target.value.toUpperCase() })}
+          readOnly={sc.locked}
+          style={sc.locked ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+          onChange={e => !sc.locked && State.updateScene(sceneId, { title: e.target.value.toUpperCase() })}
         />
         {aiCount > 0 && (
           <span className="version-badge" data-vbadge={sceneId}>
@@ -462,9 +500,12 @@ export default function SceneColumn({
           <textarea
             ref={taRef}
             className="narration-text"
-            placeholder="Write narration…"
+            placeholder={sc.locked ? 'Scene is locked — click 🔓 to unlock' : 'Write narration…'}
             defaultValue={av?.text || ''}
+            readOnly={sc.locked}
+            style={sc.locked ? { opacity: 0.55, cursor: 'not-allowed', background: '#f9f9f9' } : {}}
             onChange={e => {
+              if (sc.locked) return;
               State.updateActiveVersionText(sceneId, e.target.value);
               updateDurDisplay();
               const timerEl = document.getElementById('total-time');
@@ -483,11 +524,17 @@ export default function SceneColumn({
               key={item.id}
               sceneId={sceneId}
               item={item}
-              onDelete={() => handleDeleteOnscreen(item.id)}
+              locked={sc.locked}
+              onDelete={() => !sc.locked && handleDeleteOnscreen(item.id)}
             />
           ))}
         </ul>
-        <button className="add-item-btn" onClick={handleAddOnscreen}>
+        <button
+          className="add-item-btn"
+          disabled={sc.locked}
+          style={sc.locked ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
+          onClick={handleAddOnscreen}
+        >
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
             <line x1="5" y1="1" x2="5" y2="9"/><line x1="1" y1="5" x2="9" y2="5"/>
           </svg>
@@ -502,15 +549,18 @@ export default function SceneColumn({
           {refs.map(ref => (
             <div
               key={ref.id}
-              className="ref-chip"
-              onClick={() => onShowRefModal(sceneId, ref.id)}
-              title={ref.url || ''}
+              className={`ref-chip${sc.locked ? ' locked' : ''}`}
+              onClick={() => !sc.locked && onShowRefModal(sceneId, ref.id)}
+              title={sc.locked ? 'Unlock scene to edit references' : (ref.url || '')}
+              style={sc.locked ? { cursor: 'not-allowed', opacity: 0.55 } : {}}
             >
               <span>{ref.text || ref.url || 'Reference'}</span>
               <button
                 className="ref-del"
+                disabled={sc.locked}
                 onClick={e => {
                   e.stopPropagation();
+                  if (sc.locked) return;
                   State.deleteRef(sceneId, ref.id);
                   localRefresh();
                 }}
@@ -518,7 +568,12 @@ export default function SceneColumn({
             </div>
           ))}
         </div>
-        <button className="add-item-btn" onClick={() => onShowRefModal(sceneId, null)}>
+        <button
+          className="add-item-btn"
+          disabled={sc.locked}
+          style={sc.locked ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
+          onClick={() => !sc.locked && onShowRefModal(sceneId, null)}
+        >
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
             <line x1="5" y1="1" x2="5" y2="9"/><line x1="1" y1="5" x2="9" y2="5"/>
           </svg>
