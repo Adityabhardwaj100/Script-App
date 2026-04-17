@@ -16,6 +16,11 @@ function fmt(sec) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+/* True only when real Supabase credentials are present (i.e. on Vercel) */
+const SUPABASE_CONFIGURED =
+  !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
+  !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder');
+
 export default function AppClient() {
   /* ── Auth state ── */
   const [user,        setUser]        = useState(null);
@@ -36,6 +41,16 @@ export default function AppClient() {
 
   /* ── Bootstrap: fetch cloud data → init State ── */
   const bootstrap = useCallback(async (session) => {
+    /* ── DEV MODE: no Supabase configured → skip auth, use localStorage ── */
+    if (!SUPABASE_CONFIGURED) {
+      State.init(null);
+      setUser({ email: 'dev@local' });
+      setScriptId(State.get('activeScriptId') || null);
+      setInitialized(true);
+      setAuthLoading(false);
+      return;
+    }
+
     if (!session) {
       setAuthLoading(false);
       return;
@@ -64,6 +79,11 @@ export default function AppClient() {
 
   /* ── Auth lifecycle ── */
   useEffect(() => {
+    if (!SUPABASE_CONFIGURED) {
+      bootstrap(null); /* triggers dev-mode path */
+      return;
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       bootstrap(session);
     });
