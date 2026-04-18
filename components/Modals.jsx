@@ -52,6 +52,13 @@ export default function Modals({ modal, onClose, onRefresh, onSelectScript, onTo
     if (modal.type === 'youtube') {
       setYtData(null);
       setYtError('');
+      const claudeKey = State.get('claudeKey');
+      const geminiKey = State.get('apiKey');
+      if (!claudeKey && !geminiKey) {
+        setYtError('Add a Claude or Gemini API key in Settings first.');
+        setYtLoading(false);
+        return;
+      }
       setYtLoading(true);
       AI.generateYouTubeAssets(modal.context?.scriptId)
         .then(data => { setYtData(data); setYtLoading(false); })
@@ -311,49 +318,113 @@ export default function Modals({ modal, onClose, onRefresh, onSelectScript, onTo
       )}
 
       {/* ── YOUTUBE ── */}
-      {modal.type === 'youtube' && (
-        <div className="modal modal-wide" id="modal-youtube">
-          <div className="modal-topbar">
-            <h3>YouTube Assets</h3>
-            <button className="btn-cancel" style={{ margin: 0 }} onClick={onClose}>✕</button>
-          </div>
-          <div className="yt-output" id="yt-output">
-            {ytLoading && (
-              <div className="yt-loading">
-                <span className="spinner" /> Generating…
-              </div>
-            )}
-            {ytError && (
-              <div style={{ color: '#e53e3e', padding: '16px 0' }}>Error: {ytError}</div>
-            )}
-            {ytData && !ytLoading && (
-              <>
-                <div className="yt-section">
-                  <h4>Description</h4>
-                  <div className="yt-desc">{ytData.description}</div>
+      {modal.type === 'youtube' && (() => {
+        /* Collect refs from the script for the references section */
+        const scriptRefs = modal.context?.scriptId
+          ? State.scenes(modal.context.scriptId).flatMap(sc => sc.refs)
+          : [];
+
+        const handleCopyAll = () => {
+          if (!ytData) return;
+          const lines = [];
+          lines.push('ALTERNATIVE TITLES');
+          (ytData.alternateTitles || []).forEach((t, i) => lines.push(`${i + 1}. ${t}`));
+          lines.push('');
+          lines.push('INTRO');
+          lines.push(ytData.intro || '');
+          lines.push('');
+          if (scriptRefs.length) {
+            lines.push('REFERENCES');
+            scriptRefs.forEach(r => {
+              lines.push(r.url ? `${r.text || r.url}\n${r.url}` : (r.text || ''));
+            });
+            lines.push('');
+          }
+          lines.push('TAGS');
+          lines.push((ytData.tags || []).join(', '));
+          navigator.clipboard.writeText(lines.join('\n'));
+          onToast('Copied to clipboard ✓');
+        };
+
+        return (
+          <div className="modal modal-wide" id="modal-youtube">
+            <div className="modal-topbar">
+              <h3>YouTube Description</h3>
+              <button className="btn-cancel" style={{ margin: 0 }} onClick={onClose}>✕</button>
+            </div>
+            <div className="yt-output" id="yt-output">
+              {ytLoading && (
+                <div className="yt-loading">
+                  <span className="spinner" /> Generating…
                 </div>
-                <div className="yt-section">
-                  <h4>Tags</h4>
-                  <div className="yt-tags">
-                    {ytData.tags.map((t, i) => <span key={i} className="yt-tag">{t}</span>)}
+              )}
+              {ytError && (
+                <div style={{ color: '#e53e3e', padding: '16px 0' }}>Error: {ytError}</div>
+              )}
+              {ytData && !ytLoading && (
+                <>
+                  {/* 1. Alternative titles */}
+                  <div className="yt-section">
+                    <div className="yt-section-label">ALTERNATIVE TITLES</div>
+                    <div className="yt-block">
+                      {(ytData.alternateTitles || []).map((t, i) => (
+                        <div key={i} className="yt-title-item">{i + 1}. {t}</div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-                <div className="yt-section">
-                  <h4>Alternate Titles (A/B)</h4>
-                  <div className="yt-alt-title">
-                    {ytData.alternateTitles.map((t, i) => (
-                      <div key={i} className="yt-alt-item">
-                        <strong>{t.title}</strong>
-                        <span>{t.rationale}</span>
+
+                  {/* 3. Intro */}
+                  <div className="yt-section">
+                    <div className="yt-section-label">INTRO</div>
+                    <div className="yt-block yt-desc">{ytData.intro}</div>
+                  </div>
+
+                  {/* 4. References with links */}
+                  {scriptRefs.length > 0 && (
+                    <div className="yt-section">
+                      <div className="yt-section-label">REFERENCES</div>
+                      <div className="yt-block">
+                        {scriptRefs.map((r, i) => (
+                          <div key={i} className="yt-ref-item">
+                            <span className="yt-ref-name">{r.text || r.url || 'Reference'}</span>
+                            {r.url && (
+                              <a className="yt-ref-url" href={r.url} target="_blank" rel="noreferrer">
+                                {r.url}
+                              </a>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
+                  )}
+
+                  {/* 5. Tags */}
+                  <div className="yt-section">
+                    <div className="yt-section-label">TAGS</div>
+                    <div className="yt-block">
+                      <div className="yt-tags">
+                        {(ytData.tags || []).map((t, i) => (
+                          <span key={i} className="yt-tag">{t}</span>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
+
+                  {/* Copy All button */}
+                  <button className="yt-copy-all" onClick={handleCopyAll}>
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                      <rect x="4" y="4" width="8" height="9" rx="1.5"/>
+                      <path d="M3 9H2a1 1 0 01-1-1V2a1 1 0 011-1h6a1 1 0 011 1v1"/>
+                    </svg>
+                    Copy All
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
+
 
       {/* ── REFERENCE ── */}
       {modal.type === 'ref' && (

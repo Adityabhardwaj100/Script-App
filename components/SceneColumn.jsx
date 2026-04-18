@@ -116,7 +116,8 @@ export default function SceneColumn({
 }) {
   /* force local re-render (version changes, onscreen changes) */
   const [localKey, setLocalKey] = useState(0);
-  const [isPolishing, setIsPolishing] = useState(false);
+  const [isPolishing, setIsPolishing]           = useState(false);
+  const [showVersionControls, setShowVersionControls] = useState(false);
   const colRef   = useRef(null);
   const dragRef  = useRef(null);
   const taRef    = useRef(null);
@@ -299,19 +300,29 @@ export default function SceneColumn({
   }, [sceneId, onRefresh]);
 
 
-  /* ── AI Polish ── */
+  /* ── Generate / Polish narration ── */
+  /* Uses Claude if claudeKey is set, falls back to Gemini */
   const handleAiPolish = async () => {
-    const key = State.get('apiKey');
-    if (!key) { onToast('Add Gemini API key in Settings first'); return; }
+    const claudeKey = State.get('claudeKey');
+    const geminiKey = State.get('apiKey');
+    if (!claudeKey && !geminiKey) {
+      onToast('Add a Claude or Gemini API key in Settings first');
+      return;
+    }
     setIsPolishing(true);
     try {
-      await AI.polishNarration(sceneId);
+      if (claudeKey) {
+        await AI.generateClaudeNarration(sceneId);
+        onToast('Claude narration added ✓');
+      } else {
+        await AI.polishNarration(sceneId);
+        onToast('AI version added ✓');
+      }
       const updSc = State.scene(sceneId);
       if (taRef.current) taRef.current.value = updSc.versions.find(v => v.active)?.text || '';
       localRefresh();
       const timerEl = document.getElementById('total-time');
       if (timerEl) timerEl.textContent = fmt(State.totalDuration(scriptId));
-      onToast('AI version added ✓');
     } catch (e) {
       onToast('AI Error: ' + e.message);
     } finally {
@@ -385,19 +396,6 @@ export default function SceneColumn({
             </svg>
           </button>
 
-          {/* 2. Mic — Wispr Flow speech-to-text */}
-          <button
-            className="col-action-btn btn-mic"
-            title="Record narration (Wispr Flow)"
-            disabled={sc.locked}
-            onClick={handleMic}
-          >
-            <svg width="13" height="14" viewBox="0 0 13 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <rect x="4" y="1" width="5" height="7" rx="2.5"/>
-              <path d="M2 7a4.5 4.5 0 009 0"/>
-              <line x1="6.5" y1="11.5" x2="6.5" y2="13"/>
-            </svg>
-          </button>
 
           {/* 3. Generate narration — Claude AI, outputs to separate version */}
           <button
@@ -469,26 +467,34 @@ export default function SceneColumn({
           onChange={e => !sc.locked && State.updateScene(sceneId, { title: e.target.value.toUpperCase() })}
         />
         {aiCount > 0 && (
-          <span className="version-badge" data-vbadge={sceneId}>
+          <button
+            className="version-badge"
+            data-vbadge={sceneId}
+            title={showVersionControls ? 'Hide version controls' : 'Show version controls'}
+            onClick={() => setShowVersionControls(v => !v)}
+            style={showVersionControls ? { background: 'var(--text)', color: 'var(--bg)' } : {}}
+          >
             {sc.versions.length}
-          </span>
+          </button>
         )}
       </div>
 
       {/* ── Narration ── */}
       <div className="col-narration">
         <div className="version-container">
-          <VersionControls
-            key={localKey}
-            sceneId={sceneId}
-            onVersionChange={() => {
-              const updSc = State.scene(sceneId);
-              if (taRef.current) taRef.current.value = updSc?.versions.find(v => v.active)?.text || '';
-              localRefresh();
-              const timerEl = document.getElementById('total-time');
-              if (timerEl) timerEl.textContent = fmt(State.totalDuration(scriptId));
-            }}
-          />
+          {showVersionControls && (
+            <VersionControls
+              key={localKey}
+              sceneId={sceneId}
+              onVersionChange={() => {
+                const updSc = State.scene(sceneId);
+                if (taRef.current) taRef.current.value = updSc?.versions.find(v => v.active)?.text || '';
+                localRefresh();
+                const timerEl = document.getElementById('total-time');
+                if (timerEl) timerEl.textContent = fmt(State.totalDuration(scriptId));
+              }}
+            />
+          )}
         </div>
 
         <div className="narration-card">

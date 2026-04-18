@@ -14,7 +14,7 @@
   --sidebar-text: #e8e8e8;
   --sidebar-muted: #555555;
   --sidebar-accent: #f0a500;
-  --col-width: 260px;
+  --col-width: 320px;
   --col-gap: 0px;
   --header-h: 0px;
   --radius: 4px;
@@ -567,11 +567,12 @@ textarea { resize: none; }
   border: none;
   outline: none;
   width: 100%;
-  min-height: 140px;
+  height: 580px;        /* fixed height — matches a well-filled scene */
+  min-height: unset;
   padding: 0;
   caret-color: var(--accent);
-  overflow: hidden;
-  field-sizing: content;
+  overflow-y: auto;     /* scroll inside the box, never expand the column */
+  resize: none;
 }
 .narration-text::placeholder { color: var(--text-muted); }
 
@@ -1027,16 +1028,39 @@ textarea { resize: none; }
 .btn-confirm:hover { opacity: 0.8; }
 .modal-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
 .modal-topbar h3 { margin: 0; }
-.yt-output { display: flex; flex-direction: column; gap: 20px; max-height: 70vh; overflow-y: auto; }
+.yt-output { display: flex; flex-direction: column; gap: 20px; max-height: 70vh; overflow-y: auto; padding-right: 2px; }
 .yt-loading { display: flex; align-items: center; gap: 10px; color: var(--text-muted); font-size: 14px; padding: 20px 0; }
-.yt-section h4 { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--text-muted); margin-bottom: 10px; text-transform: uppercase; }
-.yt-desc { font-size: 13px; line-height: 1.7; color: var(--text); white-space: pre-wrap; background: var(--surface); border-radius: 8px; padding: 14px; }
+.yt-section { display: flex; flex-direction: column; gap: 8px; }
+.yt-section-label { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; color: var(--text-muted); text-transform: uppercase; }
+.yt-block { background: var(--surface); border-radius: 8px; padding: 14px; }
+.yt-title-item { font-size: 13px; font-weight: 500; line-height: 1.6; color: var(--text); padding: 4px 0; border-bottom: 1px solid var(--col-border); }
+.yt-title-item:last-child { border-bottom: none; padding-bottom: 0; }
+.yt-desc { font-size: 13px; line-height: 1.7; color: var(--text); white-space: pre-wrap; }
 .yt-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.yt-tag { font-size: 11px; padding: 4px 10px; background: var(--surface); border: 1px solid var(--col-border); border-radius: 20px; color: var(--text); }
-.yt-alt-title { display: flex; flex-direction: column; gap: 8px; }
-.yt-alt-item { background: var(--surface); border-radius: 8px; padding: 12px; }
-.yt-alt-item strong { font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px; }
-.yt-alt-item span { font-size: 11px; color: var(--text-muted); }
+.yt-tag { font-size: 11px; padding: 4px 10px; background: var(--bg); border: 1px solid var(--col-border); border-radius: 20px; color: var(--text); }
+.yt-ref-item { display: flex; flex-direction: column; gap: 2px; padding: 6px 0; border-bottom: 1px solid var(--col-border); }
+.yt-ref-item:last-child { border-bottom: none; }
+.yt-ref-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.yt-ref-url { font-size: 11px; color: var(--accent); text-decoration: none; word-break: break-all; }
+.yt-ref-url:hover { text-decoration: underline; }
+.yt-copy-all {
+  width: 100%;
+  padding: 12px;
+  background: var(--text);
+  color: var(--bg);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 150ms;
+  margin-top: 4px;
+}
+.yt-copy-all:hover { opacity: 0.8; }
 .modal-footer-split { justify-content: space-between !important; }
 .modal-footer-right { display: flex; gap: 8px; align-items: center; }
 .btn-ref-delete { font-size: 13px; font-weight: 600; color: #e53e3e; padding: 8px 14px; border-radius: 6px; transition: background 150ms; }
@@ -1109,7 +1133,7 @@ textarea { resize: none; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 18px; height: 18px;
+  min-width: 20px; height: 20px;
   background: var(--text);
   color: #fff;
   border-radius: 50%;
@@ -1118,7 +1142,12 @@ textarea { resize: none; }
   margin-left: 6px;
   flex-shrink: 0;
   align-self: center;
+  cursor: pointer;
+  border: none;
+  transition: opacity 150ms, transform 150ms;
+  padding: 0;
 }
+.version-badge:hover { opacity: 0.75; transform: scale(1.1); }
 
 .onscreen-check:checked ~ .onscreen-input {
   color: var(--text-muted);
