@@ -1,6 +1,11 @@
+import path from 'path';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
+  outputFileTracingRoot: path.join(process.cwd()),
+  experimental: {
+    outputFileTracingRoot: path.join(process.cwd()),
+  }
 };
 
 export default nextConfig;

@@ -8,8 +8,6 @@ export default function Modals({ modal, onClose, onRefresh, onSelectScript, onTo
   const [projectTitle, setProjectTitle] = useState('');
   const [scriptTitle, setScriptTitle]   = useState('');
   const [apiKey, setApiKey]             = useState('');
-  const [wisprKey, setWisprKey]         = useState('');
-  const [claudeKey, setClaudeKey]       = useState('');
   const [refText, setRefText]           = useState('');
   const [refUrl, setRefUrl]             = useState('');
   const [ytData, setYtData]             = useState(null);
@@ -33,8 +31,6 @@ export default function Modals({ modal, onClose, onRefresh, onSelectScript, onTo
     }
     if (modal.type === 'settings') {
       setApiKey(State.get('apiKey') || '');
-      setWisprKey(State.get('wisprKey') || '');
-      setClaudeKey(State.get('claudeKey') || '');
     }
     if (modal.type === 'ref') {
       const { sceneId, refId } = modal.context || {};
@@ -52,10 +48,9 @@ export default function Modals({ modal, onClose, onRefresh, onSelectScript, onTo
     if (modal.type === 'youtube') {
       setYtData(null);
       setYtError('');
-      const claudeKey = State.get('claudeKey');
-      const geminiKey = State.get('apiKey');
-      if (!claudeKey && !geminiKey) {
-        setYtError('Add a Claude or Gemini API key in Settings first.');
+      const openaiKey = State.get('apiKey');
+      if (!openaiKey) {
+        setYtError('Add an OpenAI API key in Settings first.');
         setYtLoading(false);
         return;
       }
@@ -96,8 +91,6 @@ export default function Modals({ modal, onClose, onRefresh, onSelectScript, onTo
 
   const handleSaveSettings = () => {
     State.set('apiKey',    apiKey.trim());
-    State.set('wisprKey',  wisprKey.trim());
-    State.set('claudeKey', claudeKey.trim());
     onClose();
     onToast('Settings saved');
   };
@@ -226,63 +219,18 @@ export default function Modals({ modal, onClose, onRefresh, onSelectScript, onTo
         <div className="modal" id="modal-settings">
           <h3>Settings</h3>
 
-          {/* Account row */}
-          {userEmail && (
-            <div className="settings-account">
-              <div className="settings-account-info">
-                <div className="settings-account-icon">
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                    <circle cx="7" cy="5" r="2.5"/>
-                    <path d="M1.5 12.5c0-2.5 2.5-4.5 5.5-4.5s5.5 2 5.5 4.5"/>
-                  </svg>
-                </div>
-                <span className="settings-account-email">{userEmail}</span>
-              </div>
-              <button
-                className="settings-signout-btn"
-                id="btn-signout"
-                onClick={() => { onClose(); onLogout?.(); }}
-              >
-                Sign out
-              </button>
-            </div>
-          )}
-
-          <label className="modal-label" style={{ marginTop: userEmail ? 16 : 0 }}>Gemini API Key</label>
+          <label className="modal-label" style={{ marginTop: 0 }}>OpenAI API Key</label>
           <input
             id="inp-api-key"
             className="modal-input"
-            placeholder="AIza…"
+            placeholder="sk-…"
             type="password"
             autoComplete="off"
             value={apiKey}
             onChange={e => setApiKey(e.target.value)}
           />
-          <p className="modal-hint">Powers AI Polish (Gemini).</p>
+          <p className="modal-hint">Powers AI Polish (OpenAI) and YouTube description generation.</p>
 
-          <label className="modal-label" style={{ marginTop: 14 }}>Claude API Key</label>
-          <input
-            id="inp-claude-key"
-            className="modal-input"
-            placeholder="sk-ant-…"
-            type="password"
-            autoComplete="off"
-            value={claudeKey}
-            onChange={e => setClaudeKey(e.target.value)}
-          />
-          <p className="modal-hint">Powers ‘Generate narration’ (the ○ button on each scene).</p>
-
-          <label className="modal-label" style={{ marginTop: 14 }}>Wispr Flow API Key</label>
-          <input
-            id="inp-wispr-key"
-            className="modal-input"
-            placeholder="wispr_…"
-            type="password"
-            autoComplete="off"
-            value={wisprKey}
-            onChange={e => setWisprKey(e.target.value)}
-          />
-          <p className="modal-hint">Powers the 🎤 mic button for speech-to-text on each scene.</p>
           <div className="modal-footer">
             <button className="btn-cancel" onClick={onClose}>Cancel</button>
             <button className="btn-confirm" id="btn-save-settings" onClick={handleSaveSettings}>

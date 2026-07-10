@@ -301,23 +301,16 @@ export default function SceneColumn({
 
 
   /* ── Generate / Polish narration ── */
-  /* Uses Claude if claudeKey is set, falls back to Gemini */
   const handleAiPolish = async () => {
-    const claudeKey = State.get('claudeKey');
-    const geminiKey = State.get('apiKey');
-    if (!claudeKey && !geminiKey) {
-      onToast('Add a Claude or Gemini API key in Settings first');
+    const openaiKey = State.get('apiKey');
+    if (!openaiKey) {
+      onToast('Add an OpenAI API key in Settings first');
       return;
     }
     setIsPolishing(true);
     try {
-      if (claudeKey) {
-        await AI.generateClaudeNarration(sceneId);
-        onToast('Claude narration added ✓');
-      } else {
-        await AI.polishNarration(sceneId);
-        onToast('AI version added ✓');
-      }
+      await AI.polishNarration(sceneId);
+      onToast('AI version added ✓');
       const updSc = State.scene(sceneId);
       if (taRef.current) taRef.current.value = updSc.versions.find(v => v.active)?.text || '';
       localRefresh();
@@ -397,7 +390,7 @@ export default function SceneColumn({
           </button>
 
 
-          {/* 3. Generate narration — Claude AI, outputs to separate version */}
+          {/* 3. Generate narration — outputs to separate version */}
           <button
             className="col-action-btn btn-ai"
             title="Generate narration (adds AI version — keeps your original)"
