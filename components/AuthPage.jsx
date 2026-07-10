@@ -8,7 +8,7 @@ export default function AuthPage({ onUnlock }) {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    if (password === 'script123') {
+    if (password === '{{10293847Mn@}}') {
       localStorage.setItem('app_unlocked', 'true');
       onUnlock();
     } else {
