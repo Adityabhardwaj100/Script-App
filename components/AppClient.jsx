@@ -9,6 +9,7 @@ import OverviewView   from './OverviewView.jsx';
 import RecordingMode  from './RecordingMode.jsx';
 import Modals         from './Modals.jsx';
 import Toast          from './Toast.jsx';
+import AuthPage       from './AuthPage.jsx';
 
 function fmt(sec) {
   const m = Math.floor(sec / 60), s = sec % 60;
@@ -16,7 +17,7 @@ function fmt(sec) {
 }
 
 /* Bypassed for personal use */
-const SUPABASE_CONFIGURED = false;
+const SUPABASE_CONFIGURED = true;
 
 export default function AppClient() {
   /* ── Auth state ── */
@@ -35,10 +36,32 @@ export default function AppClient() {
   const [toast,          setToast]          = useState(null);
   const [railOpen,       setRailOpen]       = useState(false);
 
-  /* ── Bootstrap: init State ── */
-  const bootstrap = useCallback(async () => {
-    State.init(null);
-    setUser({ email: 'personal@local' });
+  /* ── Bootstrap: fetch cloud data → init State ── */
+  const bootstrap = useCallback(async (session) => {
+    if (!SUPABASE_CONFIGURED) {
+      State.init(null);
+      setUser({ email: 'personal@local' });
+      setScriptId(State.get('activeScriptId') || null);
+      setInitialized(true);
+      setAuthLoading(false);
+      return;
+    }
+    if (!session) {
+      setAuthLoading(false);
+      return;
+    }
+    State.setUserId(session.user.id);
+    let cloudData = null;
+    try {
+      const { data } = await supabase
+        .from('user_data')
+        .select('data')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+      cloudData = data?.data ?? null;
+    } catch (_) {}
+    State.init(cloudData);
+    setUser(session.user);
     setScriptId(State.get('activeScriptId') || null);
     setInitialized(true);
     setAuthLoading(false);
@@ -46,7 +69,30 @@ export default function AppClient() {
 
   /* ── App lifecycle ── */
   useEffect(() => {
-    bootstrap();
+    if (!SUPABASE_CONFIGURED) {
+      bootstrap(null);
+      return;
+    }
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('getSession timeout')), 8000)
+    );
+    Promise.race([supabase.auth.getSession(), timeout])
+      .then(({ data: { session } }) => bootstrap(session))
+      .catch(() => bootstrap(null));
+      
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === 'SIGNED_IN') bootstrap(session);
+        if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setInitialized(false);
+          setScriptId(null);
+          setRefreshKey(0);
+          setAuthLoading(false);
+        }
+      }
+    );
+    return () => subscription.unsubscribe();
   }, [bootstrap]);
 
   /* ── App callbacks ── */
@@ -100,7 +146,7 @@ export default function AppClient() {
 
   /* ── Logout ── */
   const handleLogout = useCallback(async () => {
-    // No-op for personal use
+    if (SUPABASE_CONFIGURED) await supabase.auth.signOut();
   }, []);
 
   /* ── Rail actions ── */
@@ -133,6 +179,10 @@ export default function AppClient() {
         <div className="auth-loading-spinner" />
       </div>
     );
+  }
+
+  if (!user) {
+    return <AuthPage />;
   }
 
   if (!initialized) return null;
