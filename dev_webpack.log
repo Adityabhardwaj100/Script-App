@@ -1,0 +1,16 @@
+⚠ Port 3000 is in use by process 7273, using available port 3002 instead.
+▲ Next.js 16.2.4 (webpack)
+- Local:         http://localhost:3002
+- Network:       http://192.168.1.8:3002
+- Environments: .env.local
+✓ Ready in 400ms
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of /Users/adityabhardwaj/package-lock.json as the root directory.
+ To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+ Detected additional lockfiles: 
+   * /Users/adityabhardwaj/Desktop/All Folders/CODE/SCRIPTAPP/package-lock.json
+
+
+○ Compiling / ...
+[?25h
