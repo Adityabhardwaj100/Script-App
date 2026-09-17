@@ -1,5 +1,5 @@
 'use client';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { State } from '../lib/state.js';
 
 function fmt(sec) {
@@ -191,6 +191,7 @@ function GroupZone({
   onDragOver, onDragLeave, onDrop,
 }) {
   const groupRef = useRef(null);
+  const [expanded, setExpanded] = useState(true);
 
   return (
     <div
@@ -201,9 +202,18 @@ function GroupZone({
       onDragLeave={e => onDragLeave(e, groupRef.current)}
       onDrop={e => onDrop(e, group.key, groupRef.current)}
     >
-      <div className="sb-group-label">{group.label}</div>
+      <div className="sb-group-label" onClick={() => setExpanded(!expanded)}>
+        {group.label}
+        <svg
+          width="12" height="12" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+          style={{ transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </div>
 
-      {projects.map(p => {
+      {expanded && projects.map(p => {
         const scripts       = State.scripts(p.id);
         const hasActive     = scripts.some(sc => sc.id === scriptId);
         const multiScript   = scripts.length > 1;

@@ -89,6 +89,18 @@ textarea { resize: none; }
   color: rgba(255,255,255,0.6);
   text-transform: uppercase;
   margin: 28px 0 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+.sb-group-label svg {
+  opacity: 0.5;
+  transition: transform 150ms, opacity 150ms;
+}
+.sb-group-label:hover svg {
+  opacity: 1;
 }
 .sb-group-label:first-child { margin-top: 0; }
 
