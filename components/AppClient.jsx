@@ -10,6 +10,9 @@ import Modals         from './Modals.jsx';
 import Toast          from './Toast.jsx';
 import AuthPage       from './AuthPage.jsx';
 
+const isMobile = () =>
+  typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
+
 function fmt(sec) {
   const m = Math.floor(sec / 60), s = sec % 60;
   return `${m}:${s.toString().padStart(2, '0')}`;
@@ -41,6 +44,7 @@ export default function AppClient() {
       setScriptId(State.get('activeScriptId') || null);
       setInitialized(true);
     }
+    if (isMobile()) setCollapsed(true);
     setAuthLoading(false);
   }, []);
 
@@ -58,6 +62,7 @@ export default function AppClient() {
     setScriptId(id);
     setIsOverviewMode(false);
     setRefreshKey(k => k + 1);
+    if (isMobile()) setCollapsed(true);
   }, []);
 
   const showToast  = useCallback((msg, undoCb = null) => setToast({ msg, undoCb }), []);
@@ -165,6 +170,11 @@ export default function AppClient() {
         onLogout={handleLogout}
       />
 
+      {/* ── MOBILE DRAWER BACKDROP (hidden via CSS on wider screens) ── */}
+      {!collapsed && (
+        <div className="sidebar-backdrop" onClick={() => setCollapsed(true)} />
+      )}
+
       {/* ── RAIL DROPDOWN ── */}
       {railOpen && (
         <RailDropdown onAction={handleRailAction} onClose={() => setRailOpen(false)} />
@@ -255,8 +265,10 @@ function RailDropdown({ onAction, onClose }) {
 
   const sidebarEl  = typeof document !== 'undefined' ? document.getElementById('sidebar')       : null;
   const railMenuBtn = typeof document !== 'undefined' ? document.getElementById('btn-rail-menu') : null;
+  const vw   = typeof window !== 'undefined' ? window.innerWidth : Infinity;
   const top  = railMenuBtn?.getBoundingClientRect().top  ?? 60;
-  const left = (sidebarEl?.getBoundingClientRect().right ?? 312) + 8;
+  /* keep the menu inside the viewport on narrow screens */
+  const left = Math.max(8, Math.min((sidebarEl?.getBoundingClientRect().right ?? 312) + 8, vw - 236));
 
   return (
     <div
